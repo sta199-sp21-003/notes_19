@@ -1,0 +1,272 @@
+---
+title: "Linear regression - inference"
+author: ""
+date: ""
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      comment = "#>", highlight = TRUE,
+                      fig.align = "center")
+```
+
+## Main ideas
+
+- Reinforce linear model fundamentals
+
+- Inference for $\beta_0$ and $\beta_1$
+
+## Packages
+
+```{r packages, include=FALSE}
+library(tidyverse)
+library(fivethirtyeight)
+library(broom)
+```
+
+## Data
+
+```{r load_data}
+glimpse(candy_rankings)
+```
+
+# Notes
+
+## Sugar model
+
+Let's modify the sugar variable again for easier interpretation.
+
+```{r mutate_sugar}
+candy_rankings <- candy_rankings %>%
+  mutate(sugarpercent100 = sugarpercent * 100)
+```
+
+What units are the explanatory and response variable in? 
+
+```{r sugar_model}
+sugar_model <- lm(winpercent ~ sugarpercent100, data = candy_rankings)
+tidy(sugar_model)
+```
+
+$$\widehat{WinPercent} = 44.6 + 0.12~SugarPercentile$$
+
+**Interpretation**:
+
+Why does having the sugar variable on a scale from 0 to 100 lead to a better 
+interpretation than if we had the scale go from 0 to 1?
+
+Another way to interpret linear regression coefficients is by looking at 
+a *one standard deviation* increase rather than a one unit increase. 
+
+**Question:** Why might you want to look at this instead of a one unit increase?
+
+You can find a one standard deviation increase by multiplying the coefficient 
+for that term by the standard deviation.
+
+What is the standard deviation of the sugar percentile variable?
+
+```{r sd_sugar}
+
+```
+
+Now, let's multiply it by the coefficient here.
+
+```{r sd_increase}
+
+```
+
+
+**Interpretation**:
+
+**Question**: Would you always want to use this sort of interpretation? Does it 
+make sense to do a one standard deviation increase interpretation when working 
+with a dummy variable?
+
+## Assessing the model fit with $R^2$
+
+- One approach to quantify the quality of the fit of a linear model is $R^2$.
+
+- It tells us what percentage of the variability in the response variable is 
+  explained by the model. The remainder of the variability is unexplained.
+
+- $R^2$ is also known as the coefficient of determination.
+
+-**Question**: What does "explained variability in the response variable" mean?
+
+### Calculating $R^2$
+
+```{r r_squared}
+
+
+```
+
+Roughly 5% of the variability in the percent of time a candy bar wins can be 
+explained by the sugar percentile.
+
+Is this a high or low $R^2$ value?
+
+**Question**: What is the correlation between the sugar percentile and 
+winning percentage variables? How does this number relate to the $R^2$ value 
+here?
+
+```{r correlation}
+
+
+```
+
+### $R^2$ principles
+
+- We can write explained variation using the following ratio of sums of squares:
+
+$$ R^2 =  1 - \left( \frac{ SS\_{Error} }{ SS\_{Total} } \right) $$
+
+where $SS_{Error}$ is the sum of squared residuals and $SS_{Total}$ is the total 
+variance in the response variable.
+
+Next class, when we talk about multiple regression, we will discuss another 
+measure of model fit called Adjusted $R^2$ that is preferable for models with 
+many explanatory variables.
+
+## CLT-based inference for regression coefficients
+
+- Population model:
+
+$$ y = \beta_0 + \beta_1~x_1 + \epsilon $$
+
+- Sample model that we use to estimate the population model:
+  
+$$ \hat{y} = b_0 + b_1~x_1  $$
+
+Similar to other sample statistics (mean, proportion, etc) there is variability 
+in our estimates of the slope and intercept. 
+
+- Do we have convincing evidence that the true linear model has a non-zero 
+  slope?
+
+- What is a confidence interval for the population regression coefficient?
+
+Let's return to our sugar content model:
+```{r visualizingmodel}
+ggplot(data = candy_rankings, aes(x = sugarpercent100, y = winpercent)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Do Sugary Candies Win More Often?", 
+       x = "Sugar Percentile", y = "Win Percentage") + 
+  theme_minimal()
+```
+
+### Tidy confidence interval
+
+Recall our confidence interval formula:
+
+$$\mbox{point estimate} \pm \mbox{margin of error},$$
+
+where the margin of error is a function of the standard error and a 
+multiplicative quantity derived from the point estimate's standardized
+distribution.
+
+A confidence interval for $\beta_`$ is given by
+
+$$b_1 \pm t^*_{n-2} \times SE_{b_1}$$
+
+Function `tidy()` can compute the interval endpoints.
+
+```{r tidy_confint}
+tidy(sugar_model, conf.int = TRUE, conf.level = 0.95)
+```
+
+A 95% confidence interval for $\beta_1$ is given by
+
+```{r sugar_ci}
+
+
+```
+
+### Interpretation
+
+We are 95% confident that for every additional percentile of sugar, the win 
+percentage is expected to increase, on average, between 0.008 and 0.23 
+percentage points.
+
+### Hypothesis testing for $\beta_1$
+
+Is there convincing evidence, based on our sample data, that sugar content is 
+associated with winning percentage?
+
+We can set this up as a hypothesis test.
+
+- There is no relationship, the slope is 0.
+
+$$H_0: \beta_1 = 0$$
+
+- There is a relationship between sugar content and winning percentage.
+
+$$H_A: \beta_1 \ne 0$$ 
+
+We only reject $H_0$ in favor of $H_A$ if the data provide strong evidence
+that the true slope parameter is different from zero. 
+
+Under the null hypothesis, we can define a quantity $T$ such that
+
+$$T = \frac{b_k - 0}{SE_{b_k}},$$
+
+where $T$ follows a t-distribution with $n-2$ degrees of freedom. The p-values 
+in the `tidy()` output represent the two-sided p-value associated with the 
+observed statistic.
+ 
+```{r slope_test}
+
+
+```
+
+Based on the result above we reject $H_0$ in favor of $H_A$. We have enough 
+evidence to suggest that there is an association between sugar content and
+win percentage.
+
+## Practice
+
+```{r brain_data}
+brain <- read_table("http://users.stat.ufl.edu/~winner/data/brainhead.dat",
+                    col_names = c("gender", "age_range", "head_size", 
+                                  "brain_weight"))
+```
+
+A short description of the variables is given at 
+http://users.stat.ufl.edu/~winner/data/brainhead.txt.
+
+1. Create a scatterplot of `brain_weight` versus `head_size`. Comment on if
+   you think a linear model is appropriate.
+
+```{r practice_1}
+
+```
+
+2. Is there evidence to suggest that head size is associated with brain weight?
+   Perform a statistical hypothesis test at the 0.01 significance level.
+   
+```{r practice_2}
+
+```
+
+3. Fit a linear model with brain weight and variable head size standardized.
+   Interpret each of the coefficients.
+   
+```{r practice_3}
+
+```
+   
+4. Fit a linear model with brain weight as the response and age range as the
+   single predictor. Create and interpret 95% confidence interval for the
+   coefficients.
+   
+```{r practice_4}
+
+```
+
+## References
+
+1. R.J. Gladstone (1905). "A Study of the Relations of the Brain to 
+   to the Size of the Head", Biometrika, Vol. 4, pp105-123
